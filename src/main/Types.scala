@@ -23,7 +23,10 @@ object JournalEntry:
     val linesZipped = lines.zipWithIndex
     val positions = for
       startHeader <- linesZipped.find { case (line, idx) => line == "---" }.map(_._2 + 1)
-      endHeader   <- linesZipped.drop(startHeader).find { case (line, idx) => line == "---" }.map(_._2 + 1)
+      endHeader <- linesZipped
+        .drop(startHeader)
+        .find { case (line, idx) => line == "---" }
+        .map(_._2 + 1)
     yield (startHeader, endHeader)
     positions match
       case Some((startIdx, endIdx)) =>
@@ -45,7 +48,10 @@ object JournalEntry:
 trait GarminMetrics:
   def frontMatter: ListMap[String, Any]
 
-  def dayOfWeek(rawDate: String, fmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")): String =
+  def dayOfWeek(
+      rawDate: String,
+      fmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+  ): String =
     LocalDate.parse(rawDate, fmt).getDayOfWeek.toString.toLowerCase.capitalize
 
 final case class DailySummary(
@@ -120,10 +126,14 @@ object DailySleep:
         sleepTimeSeconds = sleepSeconds,
         deepSleepSeconds = sleep.get[Int]("deepSleepSeconds").toOption,
         awakeSleepSeconds = sleep.get[Int]("awakeSleepSeconds").toOption,
-        sleepStartTimestampGMT = sleep.get[Long]("sleepStartTimestampGMT").map(Instant.ofEpochMilli).toOption,
-        sleepStartTimestampLocal = sleep.get[Long]("sleepStartTimestampLocal").map(Instant.ofEpochMilli).toOption,
-        sleepEndTimestampGMT = sleep.get[Long]("sleepEndTimestampGMT").toOption.map(Instant.ofEpochMilli),
-        sleepEndTimestampLocal = sleep.get[Long]("sleepEndTimestampLocal").toOption.map(Instant.ofEpochMilli)
+        sleepStartTimestampGMT =
+          sleep.get[Long]("sleepStartTimestampGMT").map(Instant.ofEpochMilli).toOption,
+        sleepStartTimestampLocal =
+          sleep.get[Long]("sleepStartTimestampLocal").map(Instant.ofEpochMilli).toOption,
+        sleepEndTimestampGMT =
+          sleep.get[Long]("sleepEndTimestampGMT").toOption.map(Instant.ofEpochMilli),
+        sleepEndTimestampLocal =
+          sleep.get[Long]("sleepEndTimestampLocal").toOption.map(Instant.ofEpochMilli)
       )
 
 def serializeYaml(data: Map[String, Any]): String =
@@ -132,8 +142,8 @@ def serializeYaml(data: Map[String, Any]): String =
       val value = maybeValue match {
         case Some(ts: Instant) =>
           ts.toString
-          // val datetime = LocalDateTime.ofInstant(ts, ZoneOffset.UTC)
-          // datetime.format(new DateTimeFormatter.ofPattern("yyyy-MM-dd HH:MM:SS))
+        // val datetime = LocalDateTime.ofInstant(ts, ZoneOffset.UTC)
+        // datetime.format(new DateTimeFormatter.ofPattern("yyyy-MM-dd HH:MM:SS))
         case Some(x) => x.toString
         case None    => ""
         case x       => x.toString

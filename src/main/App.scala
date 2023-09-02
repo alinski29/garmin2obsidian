@@ -8,7 +8,7 @@ import scala.collection.immutable.ListMap
   val result =
     for
       opts           <- Arguments(args*)
-      _              <- runGarminExport()
+      _              <- if !opts.skipDownload then runGarminExport() else Success(())
       journalEntries <- Try(generateJournalEntries(opts))
       _              <- Try(writeJournalEntries(journalEntries, opts.destDir.get))
     yield journalEntries
@@ -16,7 +16,8 @@ import scala.collection.immutable.ListMap
   result match
     case Success(journalEntries) =>
       val dates = journalEntries.keySet
-      scribe.info(s"Processed ${dates.size} files between ${dates.min} and ${dates.max}")
+      if dates.isEmpty then scribe.info("Processed 0 files")
+      else scribe.info(s"Processed ${dates.size} files between ${dates.min} and ${dates.max}")
     case Failure(err) =>
       throw err
 
@@ -26,13 +27,23 @@ def runGarminExport(): Try[os.CommandResult] =
     scribe.info(s"Running ${process.commandChunks.mkString(" ")}")
     Try(process.call()).flatMap { res =>
       if res.exitCode == 0 then Success(res)
-      else Failure(Exception(s"Unexpected exit code: ${res.exitCode}. Error: ${res.err.lines().mkString("\n")}"))
+      else
+        val msg = s"Unexpected exit code: ${res.exitCode}. Error: ${res.err.lines().mkString("\n")}"
+        Failure(Exception(msg))
     }
 
   val cmdName        = "garmindb_cli.py"
   val checkExistsCmd = os.proc(Seq("which", cmdName))
-  val downloadCmd =
-    os.proc(Seq(cmdName, "--monitoring", "--activities", "--rhr", "--sleep", "--download", "--latest", "--import"))
+  val downloadOpts = List(
+    "--monitoring",
+    "--activities",
+    "--rhr",
+    "--sleep",
+    "--download",
+    "--latest",
+    "--import",
+  )
+  val downloadCmd = os.proc(cmdName :: downloadOpts)
 
   for
     _   <- runProcess(checkExistsCmd)
@@ -41,32 +52,24 @@ def runGarminExport(): Try[os.CommandResult] =
 
 def generateJournalEntries(args: Arguments): ListMap[LocalDate, JournalEntry] =
   getUnprocessedDates(args)
-    .takeRight(10)
     .flatMap { case (date, journalEntry) =>
-      val year             = date.getYear.toString
-      val dailySummaryPath = args.sourceDir / "FitFiles" / "Monitoring" / year / s"daily_summary_$date.json"
-      val dailySleepPath   = args.sourceDir / "Sleep" / s"sleep_$date.json"
+      val year = date.getYear.toString
+      val dailySummaryPath =
+        args.sourceDir / "FitFiles" / "Monitoring" / year / s"daily_summary_$date.json"
+      val dailySleepPath = args.sourceDir / "Sleep" / s"sleep_$date.json"
 
-      val summaryAttrs = readGarminMetrics(dailySummaryPath, DailySummary.fromJson).getOrElse(Map.empty)
-      val sleepAttrs   = readGarminMetrics(dailySleepPath, DailySleep.fromJson).getOrElse(Map.empty)
-      val garminAttrs  = summaryAttrs ++ sleepAttrs
+      val summaryAttrs =
+        readGarminMetrics(dailySummaryPath, DailySummary.fromJson).getOrElse(Map.empty)
+      val sleepAttrs  = readGarminMetrics(dailySleepPath, DailySleep.fromJson).getOrElse(Map.empty)
+      val garminAttrs = summaryAttrs ++ sleepAttrs
 
       val mergedMeta      = ListMap((garminAttrs ++ journalEntry.meta).toSeq: _*)
       val newJournalEntry = JournalEntry(journalEntry.content, mergedMeta)
 
-      // TODO: Refine logic for checking duplicates
-      // (garminAttrs.keySet diff /* journalEntry */.meta.keySet).nonEmpty
-      // val hasDifferentContent = garminAttrs.foldLeft(false) { case (cond, (k, v)) =>
-      //   journalEntry.meta.get(k) match
-      //     case Some(x) => cond || v.toString == v.toString
-      //     case None    => cond || false
-      // }
-
-      if (newJournalEntry.toMarkdown != journalEntry.toMarkdown) then
-        Some(date -> JournalEntry(journalEntry.content, mergedMeta))
-      else
+      if newJournalEntry.toMarkdown == journalEntry.toMarkdown && !args.overwrite then
         scribe.info(s"Data is the same for $date")
         None
+      else Some(date -> JournalEntry(journalEntry.content, mergedMeta))
     }
 
 def writeJournalEntries(journalEntries: ListMap[LocalDate, JournalEntry], path: os.Path): Unit =
