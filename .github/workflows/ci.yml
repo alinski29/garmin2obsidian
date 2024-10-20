@@ -13,13 +13,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
-    - uses: coursier/cache-action@v6.3
-    - name: Build
+    - name: Setup Coursier
+      uses: coursier/cache-action@v6.3
+
+    - name: Setup scala-cli
       uses: VirtusLab/scala-cli-setup@main
+
+    - name: Format
       run: |
         scala-cli fmt --check . || (
           echo "To format code run"
@@ -28,7 +33,7 @@ jobs:
         )
         scala-cli .github/scripts/package.sc
 
-    - name: Deploy
+    - name: Publish
       uses: actions/upload-artifact@v3
       with:
         name: launchers
