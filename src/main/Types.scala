@@ -38,7 +38,7 @@ object JournalEntry:
             val (key, value) = (splits.head.trim, splits.last.trim)
             key -> value
           }
-        val meta    = ListMap(pairs: _*)
+        val meta    = ListMap(pairs*)
         val content = lines.drop(endIdx).filterNot(_.isBlank) mkString ("\n")
         JournalEntry(content, meta)
       case _ =>
@@ -140,13 +140,10 @@ def serializeYaml(data: Map[String, Any]): String =
   data
     .map { case (key, maybeValue) =>
       val value = maybeValue match {
-        case Some(ts: Instant) =>
-          ts.toString
-        // val datetime = LocalDateTime.ofInstant(ts, ZoneOffset.UTC)
-        // datetime.format(new DateTimeFormatter.ofPattern("yyyy-MM-dd HH:MM:SS))
-        case Some(x) => x.toString
-        case None    => ""
-        case x       => x.toString
+        case Some(ts: Instant) => ts.toString
+        case Some(x)           => x.toString
+        case None              => ""
+        case x                 => x.toString
       }
       key -> value
     }

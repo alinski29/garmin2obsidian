@@ -21,7 +21,6 @@ import scala.collection.immutable.ListMap
     case Failure(err) =>
       throw err
 
-// TODO: First downlaod the files (w/o --import flag), then validate / discard data, then run --import
 def runGarminExport(): Try[os.CommandResult] =
   def runProcess(process: os.proc): Try[os.CommandResult] =
     scribe.info(s"Running ${process.commandChunks.mkString(" ")}")
@@ -41,7 +40,6 @@ def runGarminExport(): Try[os.CommandResult] =
     "--sleep",
     "--download",
     "--latest",
-    "--import",
   )
   val downloadCmd = os.proc(cmdName :: downloadOpts)
 
@@ -63,7 +61,7 @@ def generateJournalEntries(args: Arguments): ListMap[LocalDate, JournalEntry] =
       val sleepAttrs  = readGarminMetrics(dailySleepPath, DailySleep.fromJson).getOrElse(Map.empty)
       val garminAttrs = summaryAttrs ++ sleepAttrs
 
-      val mergedMeta      = ListMap((garminAttrs ++ journalEntry.meta).toSeq: _*)
+      val mergedMeta      = ListMap(((garminAttrs ++ journalEntry.meta).toSeq)*)
       val newJournalEntry = JournalEntry(journalEntry.content, mergedMeta)
 
       if newJournalEntry.toMarkdown == journalEntry.toMarkdown && !args.overwrite then
@@ -121,7 +119,7 @@ def getUnprocessedDates(args: Arguments): ListMap[LocalDate, JournalEntry] =
         case None =>
           Some(date -> JournalEntry())
     }
-  ListMap(dateJournalPairs: _*)
+  ListMap(dateJournalPairs*)
 
 def getExportMaxDate(src: os.Path): LocalDate =
   val year             = LocalDate.now().getYear.toString
@@ -157,5 +155,5 @@ def dateRange(
     step: Long = 1,
     acc: List[LocalDate] = List.empty[LocalDate]
 ): List[LocalDate] =
-  if startDate isAfter endDate then acc.reverse
+  if startDate.isAfter(endDate) then acc.reverse
   else dateRange(startDate.plusDays(step), endDate, step, startDate :: acc)
