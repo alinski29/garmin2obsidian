@@ -9,25 +9,27 @@ on:
 
 jobs:
   deploy:
-    runs-on: ${{ matrix.OS }}
-    strategy:
-      matrix:
-        OS: ["ubuntu-latest"]
+    name: Deploy
+    runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+
     - uses: coursier/cache-action@v6.3
-    - uses: VirtusLab/scala-cli-setup@main
+    - name: Build
+      uses: VirtusLab/scala-cli-setup@main
       run: |
         scala-cli fmt --check . || (
           echo "To format code run"
           echo "  scala-cli fmt ."
           exit 1
         )
-    - name: Package app
-      run: scala-cli .github/scripts/package.sc
-    - uses: actions/upload-artifact@v3
+        scala-cli .github/scripts/package.sc
+
+    - name: Deploy
+      uses: actions/upload-artifact@v3
       with:
         name: launchers
         path: artifacts
