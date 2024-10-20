@@ -1,5 +1,5 @@
-//> using scala "3.1.2"
-//> using lib "com.lihaoyi::os-lib:0.8.0"
+//> using scala "3.3.3"
+//> using dep "com.lihaoyi::os-lib:0.11.2"
 import scala.util.Properties
 
 val platformSuffix: String = {
@@ -19,7 +19,7 @@ val scalaCLILauncher =
   if (Properties.isWin) "scala-cli.bat" else "scala-cli"
 
 os.makeDir(artifactsPath)
-os.proc(scalaCLILauncher,"--power",  "package", ".", "-o", destPath, "--assembly")
+os.proc(scalaCLILauncher,"--power",  "package", ".", "-o", destPath, "--native")
   .call(cwd = os.pwd)
   .out
   .text()
