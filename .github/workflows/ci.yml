@@ -14,7 +14,7 @@ on:
 
 jobs:
   compile:
-    name: Deploy
+    name: Format and Compile
     runs-on: ubuntu-latest
 
     steps:
