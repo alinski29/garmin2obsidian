@@ -1,42 +1,41 @@
 name: CI
 on:
   push:
-    branches:
-    - main
-    tags:
-    - "v*"
+    branches: [main]
+    paths-ignore:
+      - "README.md"
   pull_request:
+    branches: [main]
+    paths-ignore:
+      - "README.md"
+      - assets/*
+      - .pre-commit-config.yaml
+      - .scalafmt.conf
 
 jobs:
-  deploy:
+  compile:
     name: Deploy
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Setup Coursier
-      uses: coursier/cache-action@v6.3
+      - name: Setup Coursier
+        uses: coursier/cache-action@v6.3
 
-    - name: Setup scala-cli
-      uses: VirtusLab/scala-cli-setup@main
+      - name: Setup scala-cli
+        uses: VirtusLab/scala-cli-setup@main
 
-    - name: Format
-      run: |
-        scala-cli fmt --check . || (
-          echo "To format code run"
-          echo "  scala-cli fmt ."
-          exit 1
-        )
-        scala-cli .github/scripts/package.sc
+      - name: Format
+        run: |
+          scala-cli fmt --check . || (
+            echo "To format code run"
+            echo "  scala-cli fmt ."
+            exit 1
+          )
 
-    - name: Publish
-      uses: actions/upload-artifact@v3
-      with:
-        name: launchers
-        path: artifacts
-        if-no-files-found: error
-        retention-days: 2
+      - name: Compile
+        run: scala-cli compile .

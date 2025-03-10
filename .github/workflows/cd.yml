@@ -1,0 +1,51 @@
+name: CD
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        arch:
+          - x86_64-linux
+          # - arm64-apple-darwin
+          # - aarch64-linux
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Coursier
+        uses: coursier/cache-action@v6.3
+
+      - name: Setup scala-cli
+        uses: VirtusLab/scala-cli-setup@main
+
+      # - name: Install system dependencies (Linux)
+      #   if: matrix.os == 'ubuntu-latest'
+      #   run: sudo apt-get update && sudo apt-get install -y curl libcurl4-openssl-dev clang libstdc++-12-dev libidn2-dev
+
+      - name: Build Binary
+        run: |
+          scala-cli .github/scripts/package.sc
+          ls -l
+          mv artifacts/garmin2obsidian artifacts/garmin2obsidian_${{ matrix.arch }}
+
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: garmin2obsidian-binary_${{ matrix.arch }}
+          path: artifacts/garmin2obsidian_${{ matrix.arch }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/garmin2obsidian_${{ matrix.arch }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GARMIN2OBSIDIAN_GITHUB_TOKEN }}
