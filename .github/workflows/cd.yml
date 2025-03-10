@@ -34,7 +34,6 @@ jobs:
       - name: Build Binary
         run: |
           scala-cli .github/scripts/package.sc
-          ls -l
           mv artifacts/garmin2obsidian artifacts/garmin2obsidian_${{ matrix.arch }}
 
       - name: Upload Binary Artifact
